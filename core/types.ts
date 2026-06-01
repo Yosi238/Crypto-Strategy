@@ -91,8 +91,12 @@ export interface BacktestConfig {
   riskPerTrade: number;
   /** Taker fee per side as a fraction (e.g. 0.0004 = 0.04%). */
   takerFee: number;
-  /** Slippage applied to entry & exit as a fraction of price. */
+  /** Baseline slippage (normal volatility). Applied when ATR is not elevated. */
   slippage: number;
+  /** Slippage when ATR > 1.5× its 252-bar mean (elevated volatility). */
+  slippageHigh: number;
+  /** Slippage when ATR > 2.5× its 252-bar mean (stress / liquidation cascade). */
+  slippageExtreme: number;
   /** Reward-to-risk multiple for the take profit. */
   rr: number;
   /** Hard cap on leverage regardless of stop distance. */
@@ -106,6 +110,8 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
   riskPerTrade: 0.01,
   takerFee: 0.0004,
   slippage: 0.0002,
+  slippageHigh: 0.0010,
+  slippageExtreme: 0.0030,
   rr: 2,
   maxLeverage: 5,
   maxBarsInTrade: 0,

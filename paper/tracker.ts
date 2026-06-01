@@ -57,10 +57,14 @@ export function signalToPaperTrade(sig: LiveSignal): PaperTrade | null {
  * Walk forward through candles that occurred AFTER a trade opened and decide
  * the outcome. Same pessimistic rule as the backtester: if a single bar spans
  * both levels, the stop is assumed hit first.
+ *
+ * `takerFee` is passed through to finalize() so the R-multiple matches the
+ * backtest's accounting (both sides charged taker fee on the round trip).
  */
 export function resolveOpenTrades(
   trades: PaperTrade[],
-  candlesBySymbol: Record<string, Candle[]>
+  candlesBySymbol: Record<string, Candle[]>,
+  takerFee = 0.0004
 ): PaperTrade[] {
   return trades.map((t) => {
     if (t.status !== "open" || t.isTest) return t;
@@ -69,31 +73,45 @@ export function resolveOpenTrades(
       if (c.time <= t.openedAt) continue;
       const hitStop = t.side === "long" ? c.low <= t.stopLoss : c.high >= t.stopLoss;
       const hitTp = t.side === "long" ? c.high >= t.takeProfit : c.low <= t.takeProfit;
-      if (hitStop) {
-        return finalize(t, "sl", t.stopLoss, c.time);
-      }
-      if (hitTp) {
-        return finalize(t, "tp", t.takeProfit, c.time);
-      }
+      if (hitStop) return finalize(t, "sl", t.stopLoss, c.time, takerFee);
+      if (hitTp)   return finalize(t, "tp", t.takeProfit, c.time, takerFee);
     }
     return t;
   });
 }
 
+/**
+ * Compute the net R-multiple for a closed paper trade, deducting the
+ * round-trip taker fee so paper metrics align with backtest metrics.
+ *
+ * Fee derivation (fixed-fractional sizing):
+ *   qty        = riskAmount / stopDistance
+ *   notional   = qty × entry = riskAmount / stopDistancePct
+ *   fee_USDT   = 2 × takerFee × notional
+ *   fee_R      = fee_USDT / riskAmount = 2 × takerFee / stopDistancePct
+ *
+ * This is independent of riskPerTrade and equity — it depends only on stop
+ * distance and taker fee, both of which are available on the paper trade.
+ */
 function finalize(
   t: PaperTrade,
   status: "tp" | "sl",
   exit: number,
-  time: number
+  time: number,
+  takerFee: number
 ): PaperTrade {
   const risk = Math.abs(t.entry - t.stopLoss);
   const pnlPerUnit = t.side === "long" ? exit - t.entry : t.entry - exit;
+  const grossR = risk > 0 ? pnlPerUnit / risk : 0;
+  // Round-trip fee drag expressed as a fraction of the risked amount.
+  const stopDistPct = t.entry > 0 ? risk / t.entry : 0;
+  const feeR = stopDistPct > 0 ? (2 * takerFee) / stopDistPct : 0;
   return {
     ...t,
     status,
     closedAt: time,
     exitPrice: exit,
-    rMultiple: risk > 0 ? pnlPerUnit / risk : 0,
+    rMultiple: grossR - feeR,
   };
 }
 
