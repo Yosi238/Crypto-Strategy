@@ -17,7 +17,17 @@ import { breakOfStructure, marketStructureShift, retestContinuation } from "./sm
 import { rsiMomentum, macdMomentum, volumeMomentum } from "./momentum";
 import { srBounce, srRetest, failedBreakout } from "./supportResistance";
 
+// V2 — institutional structure-based strategies
+import { londonKillZone } from "./v2/londonKillZone";
+import { mssFullSequence } from "./v2/mssFullSequence";
+import { fvg4hPullback } from "./v2/fvg4hPullback";
+
 export const STRATEGIES: StrategyDef[] = [
+  // ── V2: Institutional / structure-based (new) ──────────────────────────
+  londonKillZone,
+  mssFullSequence,
+  fvg4hPullback,
+  // ── Legacy: Indicator-based (kept as benchmarks) ───────────────────────
   // Trend
   emaRsiTrend,
   emaCross,
