@@ -12,6 +12,77 @@ data only*.
 
 ---
 
+## How to use this project
+
+### Run locally
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Download 2 years of OHLCV candles (BTC + ETH, 15m / 1h / 4h)
+npm run download
+
+# 3. Run the strategy research pipeline (discover, validate, rank, select)
+npm run research
+
+# 4. Start the dashboard
+npm run dev
+# → open http://localhost:3000
+```
+
+That's the full local setup. Steps 2 and 3 only need to re-run when you want fresh data or after changing strategy code.
+
+---
+
+### Run research
+
+Research discovers, validates and ranks all strategies against the downloaded candle data.
+Run it whenever you want to update the selected strategy or after changing any strategy logic.
+
+```bash
+npm run research          # default timeframe (1h)
+npm run research -- 4h    # override to 4h
+npm run diagnose          # full diagnostic report — data, signals, failures, candidates
+```
+
+Output is saved to `.data/research.json`. The dashboard reads this file on every scan.
+
+To keep research running automatically every Sunday:
+
+```bash
+npm run schedule          # re-runs discovery every Sunday at 01:00 local time
+npm run schedule -- --now # run once immediately, then keep the schedule
+```
+
+---
+
+### Deploy updates to Vercel
+
+```bash
+npm run deploy
+```
+
+This script:
+1. Runs `npm run build` — if the build fails, **nothing is pushed**
+2. Stages all changes (`git add .`)
+3. Creates a commit with a timestamp (`deploy: 2026-06-01 14:30:00`)
+4. Pushes to GitHub
+5. Prints `Deployment pushed. Vercel will update automatically.`
+
+Vercel watches the GitHub repo and redeploys on every push. The live site updates within ~1 minute.
+
+> **Before deploying research results:** run `npm run research && npm run seed` first, then
+> `npm run deploy`. This commits the latest validated strategy snapshot so the hosted dashboard
+> reads from it (Vercel's filesystem is ephemeral — the seed folder is the persistent store).
+
+```bash
+# Full update cycle (data + research + deploy)
+npm run download && npm run research && npm run seed && npm run deploy
+```
+
+---
+
 ## The honest part first
 
 Most "find a profitable crypto strategy" projects quietly cheat: they fit
@@ -150,7 +221,11 @@ locally. Because Vercel's filesystem is read-only/ephemeral, generate research
 locally and commit it for the hosted dashboard:
 
 ```bash
-npm run research && npm run seed   # writes ./seed (commit it)
+# Update the seed (committed research snapshot Vercel reads from)
+npm run research && npm run seed
+
+# Then deploy — builds, commits, pushes, done
+npm run deploy
 ```
 
 `npm run build` passes, all env vars are optional, and `.data` writes degrade

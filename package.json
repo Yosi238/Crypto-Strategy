@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "deploy": "node scripts/deploy.mjs",
     "demo": "tsx scripts/demo.ts",
     "download": "tsx scripts/download.ts",
     "research": "tsx scripts/research.ts",
